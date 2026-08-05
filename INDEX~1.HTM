@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>pwgen</title>
+<style>
+  :root{
+    --bg:#0d0f12;
+    --panel:#15181c;
+    --border:#26292f;
+    --text:#e4e6eb;
+    --muted:#7d838f;
+    --accent:#4f9dff;
+    --accent-dim:#2c6cc4;
+    --danger:#ff5f5f;
+    --mono: "SF Mono", "Fira Code", "JetBrains Mono", Consolas, monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--mono);
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding:24px;
+  }
+  .app{
+    width:100%;
+    max-width:480px;
+  }
+  .card{
+    width:100%;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:28px;
+    margin-bottom:16px;
+  }
+  h1{
+    font-size:14px;
+    font-weight:600;
+    letter-spacing:0.5px;
+    color:var(--muted);
+    text-transform:uppercase;
+    margin:0 0 20px 0;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  h1 .lock-status{
+    font-size:11px;
+    text-transform:none;
+    letter-spacing:0;
+    cursor:pointer;
+    color:var(--accent);
+  }
+  .output{
+    display:flex;
+    align-items:center;
+    background:#0a0c0f;
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:14px 12px;
+    margin-bottom:8px;
+    min-height:24px;
+  }
+  #password{
+    flex:1;
+    font-family:var(--mono);
+    font-size:15px;
+    letter-spacing:0.5px;
+    color:var(--text);
+    word-break:break-all;
+    user-select:all;
+  }
+  #password.placeholder{ color:var(--muted); }
+  .icon-btn{
+    background:none;
+    border:none;
+    color:var(--muted);
+    cursor:pointer;
+    font-size:12px;
+    font-family:var(--mono);
+    padding:4px 8px;
+    margin-left:8px;
+    border-radius:4px;
+    flex-shrink:0;
+  }
+  .icon-btn:hover{ color:var(--text); background:var(--border); }
+
+  .strength{
+    font-size:11px;
+    color:var(--muted);
+    margin-bottom:20px;
+    min-height:14px;
+  }
+  .strength .bar{
+    display:inline-block;
+    width:60px;
+    height:4px;
+    border-radius:2px;
+    background:var(--border);
+    margin-left:8px;
+    position:relative;
+    top:-1px;
+    overflow:hidden;
+  }
+  .strength .bar-fill{
+    height:100%;
+    background:var(--accent);
+    transition:width .2s ease;
+  }
+
+  .row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:14px;
+    font-size:13px;
+    color:var(--text);
+  }
+  .row.length-row{ margin-bottom:20px; }
+  input[type="range"]{
+    -webkit-appearance:none;
+    width:60%;
+    height:2px;
+    background:var(--border);
+    border-radius:2px;
+    outline:none;
+  }
+  input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:14px;
+    height:14px;
+    border-radius:50%;
+    background:var(--accent);
+    cursor:pointer;
+  }
+  .len-value{ color:var(--accent); font-weight:600; width:28px; text-align:right; }
+
+  .toggles{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px 16px;
+    margin-bottom:24px;
+  }
+  .toggle{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    font-size:12.5px;
+    color:var(--text);
+  }
+  .switch{ position:relative; width:32px; height:18px; flex-shrink:0; }
+  .switch input{ opacity:0; width:0; height:0; }
+  .slider{
+    position:absolute; cursor:pointer; inset:0;
+    background:var(--border); border-radius:999px; transition:.15s;
+  }
+  .slider:before{
+    content:""; position:absolute; height:14px; width:14px;
+    left:2px; top:2px; background:var(--muted); border-radius:50%; transition:.15s;
+  }
+  input:checked + .slider{ background:var(--accent-dim); }
+  input:checked + .slider:before{ background:var(--accent); transform:translateX(14px); }
+
+  .btn-row{ display:flex; gap:10px; }
+  .generate, .save-btn{
+    flex:1;
+    padding:13px;
+    border:none;
+    border-radius:6px;
+    font-family:var(--mono);
+    font-size:13px;
+    font-weight:600;
+    letter-spacing:0.5px;
+    text-transform:uppercase;
+    cursor:pointer;
+    transition:background .15s;
+  }
+  .generate{ background:var(--accent); color:#0a0c0f; }
+  .generate:hover{ background:#6bacff; }
+  .save-btn{ background:var(--border); color:var(--text); }
+  .save-btn:hover{ background:#33373e; }
+  .save-btn:disabled{ opacity:0.4; cursor:not-allowed; }
+
+  .vault-header{
+    display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;
+  }
+  .vault-empty{ color:var(--muted); font-size:12.5px; }
+  .entry{
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:12px;
+    margin-bottom:8px;
+  }
+  .entry-top{ display:flex; justify-content:space-between; align-items:baseline; }
+  .entry-name{ font-size:13px; font-weight:600; }
+  .entry-desc{ font-size:11.5px; color:var(--muted); margin-top:2px; }
+  .entry-pw{
+    font-size:12.5px; margin-top:8px; color:var(--muted);
+    background:#0a0c0f; border-radius:4px; padding:8px; word-break:break-all;
+  }
+  .entry-actions{ display:flex; gap:6px; margin-top:8px; }
+  .entry-actions button{
+    background:var(--border); color:var(--text); border:none; border-radius:4px;
+    font-family:var(--mono); font-size:11px; padding:6px 10px; cursor:pointer;
+  }
+  .entry-actions button:hover{ background:#33373e; }
+  .entry-actions button.danger{ color:var(--danger); }
+
+  .overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,0.6);
+    display:none; align-items:center; justify-content:center; z-index:10;
+  }
+  .overlay.show{ display:flex; }
+  .modal{
+    background:var(--panel); border:1px solid var(--border); border-radius:10px;
+    padding:24px; width:340px;
+  }
+  .modal h2{ font-size:13px; text-transform:uppercase; color:var(--muted); margin:0 0 16px 0; }
+  .modal label{ font-size:12px; color:var(--muted); display:block; margin-bottom:4px; }
+  .modal input[type="text"], .modal input[type="password"], .modal textarea{
+    width:100%; background:#0a0c0f; border:1px solid var(--border); color:var(--text);
+    font-family:var(--mono); font-size:13px; padding:9px; border-radius:6px; margin-bottom:14px;
+    outline:none;
+  }
+  .modal textarea{ resize:vertical; min-height:50px; }
+  .modal .error{ color:var(--danger); font-size:11.5px; margin:-8px 0 12px 0; min-height:14px; }
+  .modal .actions{ display:flex; gap:10px; }
+  .modal .actions button{
+    flex:1; padding:11px; border:none; border-radius:6px; cursor:pointer;
+    font-family:var(--mono); font-size:12px; font-weight:600; text-transform:uppercase;
+  }
+  .modal .actions .primary{ background:var(--accent); color:#0a0c0f; }
+  .modal .actions .secondary{ background:var(--border); color:var(--text); }
+
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(10px);
+    background:var(--panel); border:1px solid var(--border); color:var(--text);
+    font-size:12px; padding:8px 14px; border-radius:6px;
+    opacity:0; pointer-events:none; transition:opacity .2s, transform .2s;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="card">
+    <h1>
+      Password Generator
+      <span class="lock-status" id="lockStatus"></span>
+    </h1>
+
+    <div class="output">
+      <span id="password" class="placeholder">Click generate</span>
+      <button class="icon-btn" id="copyBtn">copy</button>
+    </div>
+    <div class="strength" id="strength"></div>
+
+    <div class="row length-row">
+      <label for="length">Length</label>
+      <input type="range" id="length" min="4" max="128" value="20">
+      <span class="len-value" id="lenValue">20</span>
+    </div>
+
+    <div class="toggles">
+      <div class="toggle">
+        <span>Uppercase A-Z</span>
+        <label class="switch"><input type="checkbox" id="opt-upper" checked><span class="slider"></span></label>
+      </div>
+      <div class="toggle">
+        <span>Lowercase a-z</span>
+        <label class="switch"><input type="checkbox" id="opt-lower" checked><span class="slider"></span></label>
+      </div>
+      <div class="toggle">
+        <span>Numbers 0-9</span>
+        <label class="switch"><input type="checkbox" id="opt-numbers" checked><span class="slider"></span></label>
+      </div>
+      <div class="toggle">
+        <span>Symbols !@#$</span>
+        <label class="switch"><input type="checkbox" id="opt-symbols" checked><span class="slider"></span></label>
+      </div>
+      <div class="toggle">
+        <span>Exclude ambiguous</span>
+        <label class="switch"><input type="checkbox" id="opt-ambiguous"><span class="slider"></span></label>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="generate" id="generateBtn">Generate</button>
+      <button class="save-btn" id="openSaveBtn" disabled>Save password</button>
+    </div>
+  </div>
+
+  <div class="card" id="vaultCard" style="display:none;">
+    <div class="vault-header">
+      <h1 style="margin:0;">Saved Passwords</h1>
+    </div>
+    <div id="vaultList"></div>
+    <div class="vault-empty" id="vaultEmpty">No saved passwords yet.</div>
+  </div>
+</div>
+
+<div class="overlay" id="masterOverlay">
+  <div class="modal">
+    <h2 id="masterTitle">Unlock Vault</h2>
+    <label id="masterLabel" for="masterInput">Master password</label>
+    <input type="password" id="masterInput" autocomplete="off">
+    <div class="error" id="masterError"></div>
+    <div class="actions">
+      <button class="primary" id="masterSubmit">Unlock</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="saveOverlay">
+  <div class="modal">
+    <h2>Save Password</h2>
+    <label for="entryName">Name</label>
+    <input type="text" id="entryName" placeholder="e.g. GitHub">
+    <label for="entryDesc">Description (optional)</label>
+    <textarea id="entryDesc" placeholder="e.g. work account, created Aug 2026"></textarea>
+    <div class="error" id="saveError"></div>
+    <div class="actions">
+      <button class="secondary" id="saveCancel">Cancel</button>
+      <button class="primary" id="saveConfirm">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">Copied to clipboard</div>
+
+<script>
+(function(){
+  const SETS = {
+    upper: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+    lower: "abcdefghijklmnopqrstuvwxyz",
+    numbers: "0123456789",
+    symbols: "!@#$%^&*()_+-=[]{}|;:,.<>?/~`"
+  };
+  const AMBIGUOUS = /[Il1O0o]/g;
+
+  const lengthEl = document.getElementById('length');
+  const lenValueEl = document.getElementById('lenValue');
+  const passwordEl = document.getElementById('password');
+  const strengthEl = document.getElementById('strength');
+  const generateBtn = document.getElementById('generateBtn');
+  const copyBtn = document.getElementById('copyBtn');
+  const openSaveBtn = document.getElementById('openSaveBtn');
+  const toast = document.getElementById('toast');
+  const lockStatus = document.getElementById('lockStatus');
+
+  const vaultCard = document.getElementById('vaultCard');
+  const vaultList = document.getElementById('vaultList');
+  const vaultEmpty = document.getElementById('vaultEmpty');
+
+  const masterOverlay = document.getElementById('masterOverlay');
+  const masterTitle = document.getElementById('masterTitle');
+  const masterInput = document.getElementById('masterInput');
+  const masterError = document.getElementById('masterError');
+  const masterSubmit = document.getElementById('masterSubmit');
+
+  const saveOverlay = document.getElementById('saveOverlay');
+  const entryName = document.getElementById('entryName');
+  const entryDesc = document.getElementById('entryDesc');
+  const saveError = document.getElementById('saveError');
+  const saveCancel = document.getElementById('saveCancel');
+  const saveConfirm = document.getElementById('saveConfirm');
+
+  const opts = {
+    upper: document.getElementById('opt-upper'),
+    lower: document.getElementById('opt-lower'),
+    numbers: document.getElementById('opt-numbers'),
+    symbols: document.getElementById('opt-symbols'),
+    ambiguous: document.getElementById('opt-ambiguous')
+  };
+
+  let vaultUnlocked = false;
+  let vaultExistsFlag = false;
+  let currentPassword = null;
+
+  lengthEl.addEventListener('input', () => { lenValueEl.textContent = lengthEl.value; });
+
+  function secureRandomInt(max){
+    const arr = new Uint32Array(1);
+    const limit = Math.floor(0xFFFFFFFF / max) * max;
+    let val;
+    do { crypto.getRandomValues(arr); val = arr[0]; } while (val >= limit);
+    return val % max;
+  }
+
+  function buildCharset(){
+    let charset = "";
+    const active = [];
+    if (opts.upper.checked){ active.push('upper'); charset += SETS.upper; }
+    if (opts.lower.checked){ active.push('lower'); charset += SETS.lower; }
+    if (opts.numbers.checked){ active.push('numbers'); charset += SETS.numbers; }
+    if (opts.symbols.checked){ active.push('symbols'); charset += SETS.symbols; }
+    if (opts.ambiguous.checked){ charset = charset.replace(AMBIGUOUS, ""); }
+    return { charset, active };
+  }
+
+  function satisfiesAllSets(password, active){
+    return active.every(key => {
+      let set = SETS[key];
+      if (opts.ambiguous.checked) set = set.replace(AMBIGUOUS, "");
+      for (const ch of password){ if (set.includes(ch)) return true; }
+      return false;
+    });
+  }
+
+  function generatePassword(){
+    const length = parseInt(lengthEl.value, 10);
+    const { charset, active } = buildCharset();
+    if (!charset || active.length === 0){ alert("Select at least one character set."); return null; }
+    let password, attempts = 0;
+    do {
+      const chars = [];
+      for (let i = 0; i < length; i++){ chars.push(charset[secureRandomInt(charset.length)]); }
+      password = chars.join('');
+      attempts++;
+    } while (attempts < 10 && !satisfiesAllSets(password, active));
+    return password;
+  }
+
+  function estimateEntropy(password, active){
+    let poolSize = 0;
+    if (active.includes('upper')) poolSize += 26;
+    if (active.includes('lower')) poolSize += 26;
+    if (active.includes('numbers')) poolSize += 10;
+    if (active.includes('symbols')) poolSize += SETS.symbols.length;
+    return password.length * Math.log2(poolSize || 1);
+  }
+
+  function renderStrength(password, active){
+    const bits = estimateEntropy(password, active);
+    let label, pct;
+    if (bits < 40){ label = "Weak"; pct = 25; }
+    else if (bits < 60){ label = "Fair"; pct = 50; }
+    else if (bits < 80){ label = "Strong"; pct = 75; }
+    else { label = "Very strong"; pct = 100; }
+    strengthEl.innerHTML = `~${Math.round(bits)} bits · ${label}` +
+      `<span class="bar"><span class="bar-fill" style="width:${pct}%"></span></span>`;
+  }
+
+  function showToast(msg){
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => toast.classList.remove('show'), 1600);
+  }
+
+  generateBtn.addEventListener('click', () => {
+    const { active } = buildCharset();
+    const password = generatePassword();
+    if (!password) return;
+    currentPassword = password;
+    passwordEl.textContent = password;
+    passwordEl.classList.remove('placeholder');
+    renderStrength(password, active);
+    openSaveBtn.disabled = !vaultUnlocked;
+  });
+
+  copyBtn.addEventListener('click', async () => {
+    const text = passwordEl.textContent;
+    if (!text || passwordEl.classList.contains('placeholder')) return;
+    try { await navigator.clipboard.writeText(text); showToast("Copied to clipboard"); }
+    catch (e) { showToast("Copy failed"); }
+  });
+
+  Object.values(opts).slice(0,4).forEach(cb => {
+    cb.addEventListener('change', () => {
+      const anyOn = [opts.upper, opts.lower, opts.numbers, opts.symbols].some(c => c.checked);
+      if (!anyOn){ cb.checked = true; }
+    });
+  });
+
+  function updateLockStatus(){
+    lockStatus.textContent = vaultUnlocked ? 'Lock vault' : (vaultExistsFlag ? 'Unlock vault' : 'Set up vault');
+  }
+
+  async function refreshStatus(){
+    const status = await window.vaultAPI.status();
+    vaultExistsFlag = status.exists;
+    vaultUnlocked = status.unlocked;
+    vaultCard.style.display = vaultUnlocked ? 'block' : 'none';
+    openSaveBtn.disabled = !vaultUnlocked || !currentPassword;
+    updateLockStatus();
+    if (vaultUnlocked) await refreshList();
+  }
+
+  async function refreshList(){
+    const list = await window.vaultAPI.list();
+    vaultList.innerHTML = '';
+    vaultEmpty.style.display = list.length === 0 ? 'block' : 'none';
+    for (const entry of list){
+      const div = document.createElement('div');
+      div.className = 'entry';
+      div.innerHTML = `
+        <div class="entry-top">
+          <span class="entry-name"></span>
+        </div>
+        <div class="entry-desc"></div>
+        <div class="entry-pw" style="display:none;"></div>
+        <div class="entry-actions">
+          <button data-action="reveal">Reveal</button>
+          <button data-action="copy">Copy</button>
+          <button data-action="delete" class="danger">Delete</button>
+        </div>
+      `;
+      div.querySelector('.entry-name').textContent = entry.name;
+      div.querySelector('.entry-desc').textContent = entry.description || '';
+      const pwEl = div.querySelector('.entry-pw');
+
+      div.querySelector('[data-action="reveal"]').addEventListener('click', async (e) => {
+        if (pwEl.style.display === 'none'){
+          const res = await window.vaultAPI.reveal(entry.id);
+          if (res.ok){ pwEl.textContent = res.password; pwEl.style.display = 'block'; e.target.textContent = 'Hide'; }
+        } else {
+          pwEl.style.display = 'none';
+          pwEl.textContent = '';
+          e.target.textContent = 'Reveal';
+        }
+      });
+
+      div.querySelector('[data-action="copy"]').addEventListener('click', async () => {
+        const res = await window.vaultAPI.copy(entry.id);
+        if (res.ok) showToast('Copied — clears in 20s');
+      });
+
+      div.querySelector('[data-action="delete"]').addEventListener('click', async () => {
+        if (!confirm(`Delete "${entry.name}"?`)) return;
+        await window.vaultAPI.remove(entry.id);
+        await refreshList();
+      });
+
+      vaultList.appendChild(div);
+    }
+  }
+
+  openSaveBtn.addEventListener('click', () => {
+    if (!currentPassword) return;
+    entryName.value = '';
+    entryDesc.value = '';
+    saveError.textContent = '';
+    saveOverlay.classList.add('show');
+    entryName.focus();
+  });
+
+  saveCancel.addEventListener('click', () => saveOverlay.classList.remove('show'));
+
+  saveConfirm.addEventListener('click', async () => {
+    const name = entryName.value.trim();
+    if (!name){ saveError.textContent = 'Name is required.'; return; }
+    const res = await window.vaultAPI.add({ name, description: entryDesc.value.trim(), password: currentPassword });
+    if (!res.ok){ saveError.textContent = res.error || 'Could not save.'; return; }
+    saveOverlay.classList.remove('show');
+    showToast('Password saved');
+    await refreshList();
+  });
+
+  lockStatus.addEventListener('click', async () => {
+    if (vaultUnlocked){
+      await window.vaultAPI.lock();
+      await refreshStatus();
+      showToast('Vault locked');
+    } else {
+      openMasterModal();
+    }
+  });
+
+  function openMasterModal(){
+    masterInput.value = '';
+    masterError.textContent = '';
+    masterTitle.textContent = vaultExistsFlag ? 'Unlock Vault' : 'Create Vault';
+    masterSubmit.textContent = vaultExistsFlag ? 'Unlock' : 'Create';
+    masterOverlay.classList.add('show');
+    masterInput.focus();
+  }
+
+  masterSubmit.addEventListener('click', async () => {
+    const pw = masterInput.value;
+    if (!pw){ masterError.textContent = 'Enter a password.'; return; }
+    const res = vaultExistsFlag ? await window.vaultAPI.unlock(pw) : await window.vaultAPI.create(pw);
+    if (!res.ok){ masterError.textContent = res.error || 'Something went wrong.'; return; }
+    masterOverlay.classList.remove('show');
+    await refreshStatus();
+    showToast(vaultExistsFlag ? 'Vault unlocked' : 'Vault created');
+  });
+
+  masterInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') masterSubmit.click(); });
+
+  generateBtn.click();
+  refreshStatus().then(() => {
+    if (!vaultUnlocked) openMasterModal();
+  });
+})();
+</script>
+
+</body>
+</html>
